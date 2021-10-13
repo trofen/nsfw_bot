@@ -36,6 +36,10 @@ def handleAnimation(message):
 @bot.message_handler(content_types= ["video"])
 def handleVideo(message):
     handleSequence(message, message.video.file_id)
+    
+@bot.message_handler(content_types= ["video_note"])
+def handleVideoNote(message):
+    handleSequence(message, message.video_note.file_id)
   
 def handleStatic(message, file_id):
     response = download(file_id)
