@@ -8,6 +8,7 @@ from io import BytesIO
 
 #max probability rate for message delete
 NSFW_MAX = 0.7
+SEQ_SCANS = 4
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -52,13 +53,11 @@ def handleSequence(message, file_id):
     if response.status_code == 200:
         max_nsfw = 0;
         container = av.open(BytesIO(response.content))
-        video = next(s for s in container.streams)
-        
+        video = next(s for s in container.streams) 
+        total_frames = container.streams.video[0].frames
         for packet in container.demux(video):
-            frames = packet.decode()
-            for frame in frames:
-                if frame.index % 100 ==1:
-                    print(frame.index)
+            for frame in packet.decode():
+                if frame.index % int(total_frames / SEQ_SCANS)  ==1:
                     nsfw = analyze(frame.to_image())
                     if nsfw > max_nsfw:
                         max_nsfw = nsfw
