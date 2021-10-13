@@ -55,7 +55,7 @@ def handleSequence(message, response):
                     nsfw = analyze(frame.to_image())
                     if nsfw > max_nsfw:
                         max_nsfw = nsfw
-        answer(message, nsfw)
+        answer(message, max_nsfw)
 
 def download(file_id):
     file_info = bot.get_file(file_id)
