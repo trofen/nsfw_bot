@@ -31,11 +31,11 @@ def handleSticker(message):
     
 @bot.message_handler(content_types= ["animation"])
 def handleAnimation(message):
-    handleSequence(message, download(message.animation.file_id))
+    handleSequence(message, message.animation.file_id)
         
 @bot.message_handler(content_types= ["video"])
 def handleVideo(message):
-    handleSequence(message, download(message.video.file_id))
+    handleSequence(message, message.video.file_id)
   
 def handleStatic(message, file_id):
     response = download(file_id)
@@ -43,14 +43,17 @@ def handleStatic(message, file_id):
         image = Image.open(BytesIO(response.content))
         answer(message, analyze(image))
 
-def handleSequence(message, response):
+def handleSequence(message, file_id):
+    response = download(file_id)
     if response.status_code == 200:
         max_nsfw = 0;
         container = av.open(BytesIO(response.content))
         video = next(s for s in container.streams)
+        
         for packet in container.demux(video):
-            for frame in packet.decode():
-                if frame.index %100==1:
+            frames = packet.decode()
+            for frame in frames:
+                if frame.index % 100 ==1:
                     print(frame.index)
                     nsfw = analyze(frame.to_image())
                     if nsfw > max_nsfw:
