@@ -8,7 +8,7 @@ from io import BytesIO
 
 #max probability rate for message delete
 NSFW_MAX = 0.7
-SEQ_SCANS = 4
+SEQ_SCANS = 5
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -43,12 +43,19 @@ def handleVideoNote(message):
     handleSequence(message, message.video_note.file_id)
   
 def handleStatic(message, file_id):
+    if message.chat.type == 'private':
+        bot.send_chat_action(message.chat.id, 'typing')
     response = download(file_id)
     if response.status_code == 200:
-        image = Image.open(BytesIO(response.content))
-        answer(message, analyze(image))
+        nsfw = analyze(Image.open(BytesIO(response.content)))
+        if message.chat.type == 'private':
+            answerPrivate(message, nsfw)
+        elif nsfw > NSFW_MAX:
+            answerChat(message)
 
 def handleSequence(message, file_id):
+    if message.chat.type == 'private':
+        bot.send_chat_action(message.chat.id, 'typing')
     response = download(file_id)
     if response.status_code == 200:
         max_nsfw = 0;
@@ -59,9 +66,14 @@ def handleSequence(message, file_id):
             for frame in packet.decode():
                 if frame.index % int(total_frames / SEQ_SCANS)  ==1:
                     nsfw = analyze(frame.to_image())
-                    if nsfw > max_nsfw:
+                    #print('Image analyzing. Frame: {0}, NSFW: {1}'.format(frame.index, nsfw))
+                    if message.chat.type != 'private' and nsfw > NSFW_MAX:
+                        answerChat(message)
+                        return
+                    elif nsfw > max_nsfw:
                         max_nsfw = nsfw
-        answer(message, max_nsfw)
+        if message.chat.type == 'private':
+            answerPrivate(message, max_nsfw)
 
 def download(file_id):
     file_info = bot.get_file(file_id)
@@ -71,12 +83,12 @@ def analyze(image):
     sfw, nsfw = classify(image)
     return nsfw
 
-def answer(message, nsfw):
-    if message.chat.type == 'private':
-        bot.reply_to(message, "NSFW: {0}%".format(int(round(nsfw * 100))))
-    elif nsfw > NSFW_MAX:
-        if bot.get_chat_member(message.chat.id, me.id).can_delete_messages:
-            bot.delete_message(message.chat.id, message.id)
-            bot.send_message(message.chat.id, '@{0} 👮'.format(message.from_user.username))
+def answerPrivate(message, nsfw):
+    bot.reply_to(message, "NSFW: {0}%".format(int(round(nsfw * 100)))) 
+
+def answerChat(message):
+    if bot.get_chat_member(message.chat.id, me.id).can_delete_messages:
+        bot.delete_message(message.chat.id, message.id)
+        bot.send_message(message.chat.id, '@{0} 👮'.format(message.from_user.username))
 
 bot.infinity_polling()
