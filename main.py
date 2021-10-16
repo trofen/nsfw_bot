@@ -28,7 +28,10 @@ def handlePhoto(message):
 
 @bot.message_handler(content_types= ["sticker"])
 def handleSticker(message):
-    handleStatic(message, message.sticker.file_id)
+    if message.sticker.is_animated:
+        handleSequence(message, message.sticker.file_id)
+    else:
+        handleStatic(message, message.sticker.file_id)
     
 @bot.message_handler(content_types= ["animation"])
 def handleAnimation(message):
